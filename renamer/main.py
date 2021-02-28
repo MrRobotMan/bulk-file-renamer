@@ -36,16 +36,16 @@ class CurrentDir(tk.Frame):
         Shows the path of the current directory in use
         """
         super().__init__(parent)
-        cwd = default_directory if default_directory else os.getcwd()
+        cwd = os.path.abspath(default_directory) if default_directory else os.getcwd()
         self.current_path = tk.StringVar(value=cwd)
 
-        up_one_folder_btn = ttk.Button(command=self.up_one)
+        up_one_folder_btn = ttk.Button(self, command=self.up_one)
         up_one_folder_btn.grid(row=0, column=0)
 
-        current_path_box = ttk.Entry(textvariable=self.current_path, width=50)
+        current_path_box = ttk.Entry(self, textvariable=self.current_path, width=50)
         current_path_box.grid(row=0, column=1)
 
-        select_dir_btn = ttk.Button(command=self.select_dir)
+        select_dir_btn = ttk.Button(self, command=self.select_dir)
         select_dir_btn.grid(row=0, column=2)
 
     def up_one(self):
@@ -83,12 +83,19 @@ class DirectoryTree(tk.Frame):
         xsb.grid(row=1, column=0, sticky='ew')
 
     def update_tree(self, *args):
+        """
+        Clears the tress and processes the new directory
+        """
+        self.tree.delete(*self.tree.get_children())
         self.tree.heading('#0', text=self.path.get(), anchor='w')
         abspath = os.path.abspath(self.path.get())
         root_node = self.tree.insert('', 'end', text=abspath, open=True)
         self.process_directory(root_node, abspath)
 
     def process_directory(self, parent, path):
+        """
+        Creates a new tree
+        """
         for p in os.listdir(path):
             abspath = os.path.join(path, p)
             isdir = os.path.isdir(abspath)
@@ -103,16 +110,21 @@ class App(tk.Frame):
 
         directory = CurrentDir(self, default_directory)
         path = directory.current_path
-        directory.grid(row=0, column=0, columnspan=2)
+        directory.grid(row=0, column=0, columnspan=2, sticky='nsw')
 
-        tree_frame = DirectoryTree(master, path)
+        tree_frame = DirectoryTree(self, path)
         tree_frame.grid(row=1, column=0)
 
-        directory_frame = tk.Frame()
+        directory_frame = tk.Frame(self)
+        ttk.Label(directory_frame, text='Show files here').grid(sticky='nsew')
         directory_frame.grid(row=1, column=1)
 
-        options_frame = tk.Frame()
+        options_frame = tk.Frame(self)
+        ttk.Label(options_frame, text='Show rename opiions here').grid(sticky='nsew')
         options_frame.grid(row=2, column=1, columnspan=2)
+
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=1)
 
 
 if __name__ == "__main__":
