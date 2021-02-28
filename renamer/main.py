@@ -1,5 +1,7 @@
-import argparse
 from pathlib import Path
+import sys
+from PySide6.QtWidgets import QApplication, QLabel
+
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog
@@ -24,19 +26,13 @@ rename options include:
 """
 
 
-def get_args(argv=None):
-    parser = argparse.ArgumentParser(description='Rename files in a chosen directory')
-    parser.add_argument('-d', '--directory', help='Optional starting directory')
-    return parser.parse_args(argv)
-
-
 class CurrentDir(tk.Frame):
-    def __init__(self, parent, default_directory=None):
+    def __init__(self, parent):
         """
         Shows the path of the current directory in use
         """
         super().__init__(parent)
-        cwd = Path(default_directory).absolute() if default_directory else Path().absolute()
+        cwd = Path().absolute()
         self.current_path = tk.StringVar(value=cwd)
 
         up_one_folder_btn = ttk.Button(self, command=self.up_one)
@@ -127,8 +123,11 @@ class App(tk.Frame):
 
 
 if __name__ == "__main__":
-    args = get_args()
-
-    root = tk.Tk()
-    App(root, args.directory).grid()
-    root.mainloop()
+    app = QApplication(sys.argv)
+    label = QLabel("Hello World!")
+    label.show()
+    app.exec_()
+    sys.exit()
+    # root = tk.Tk()
+    # App(root, args.directory).grid()
+    # root.mainloop()
