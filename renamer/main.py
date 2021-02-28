@@ -1,7 +1,7 @@
 import argparse
+from pathlib import Path
 import tkinter as tk
 import tkinter.ttk as ttk
-import os
 from tkinter import filedialog
 
 """
@@ -36,7 +36,7 @@ class CurrentDir(tk.Frame):
         Shows the path of the current directory in use
         """
         super().__init__(parent)
-        cwd = os.path.abspath(default_directory) if default_directory else os.getcwd()
+        cwd = Path(default_directory).absolute() if default_directory else Path().absolute()
         self.current_path = tk.StringVar(value=cwd)
 
         up_one_folder_btn = ttk.Button(self, command=self.up_one)
@@ -52,7 +52,7 @@ class CurrentDir(tk.Frame):
         """
         Moves the directory up one level
         """
-        parent_dir = os.path.split(self.current_path.get())[0]
+        parent_dir = Path(self.current_path.get()).parent
         self.current_path.set(parent_dir)
 
     def select_dir(self):
@@ -74,7 +74,7 @@ class DirectoryTree(tk.Frame):
         self.tree.configure(yscroll=ysb.set, xscroll=xsb.set)
         self.tree.heading('#0', text=self.path.get(), anchor='w')
 
-        abspath = os.path.abspath(self.path.get())
+        abspath = Path(self.path.get()).absolute()
         root_node = self.tree.insert('', 'end', text=abspath, open=True)
         self.process_directory(root_node, abspath)
 
@@ -88,7 +88,7 @@ class DirectoryTree(tk.Frame):
         """
         self.tree.delete(*self.tree.get_children())
         self.tree.heading('#0', text=self.path.get(), anchor='w')
-        abspath = os.path.abspath(self.path.get())
+        abspath = Path(self.path.get()).absolute()
         root_node = self.tree.insert('', 'end', text=abspath, open=True)
         self.process_directory(root_node, abspath)
 
@@ -96,11 +96,10 @@ class DirectoryTree(tk.Frame):
         """
         Creates a new tree
         """
-        for p in os.listdir(path):
-            abspath = os.path.join(path, p)
-            isdir = os.path.isdir(abspath)
+        for p in path.iterdir():
+            abspath = path / p
             oid = self.tree.insert(parent, 'end', text=p, open=False)
-            if isdir:
+            if abspath.is_dir():
                 self.process_directory(oid, abspath)
 
 
