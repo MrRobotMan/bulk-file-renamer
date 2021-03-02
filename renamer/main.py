@@ -1,11 +1,7 @@
 from pathlib import Path
 import sys
-from PySide6.QtCore import QDir
+from PySide6.QtCore import QDir, Slot, QObject, SIGNAL
 from PySide6.QtWidgets import QApplication, QTreeView, QFileSystemModel
-
-import tkinter as tk
-import tkinter.ttk as ttk
-from tkinter import filedialog
 
 """
 Planning:
@@ -35,8 +31,17 @@ class directory_tree(QTreeView):
         self.model.setFilter(QDir.AllDirs | QDir.NoDotAndDotDot)
         self.setModel(self.model)
         self.setCurrentIndex(self.model.index(path))
+        self.setIndentation(10)
         for col in range(1, 4):
             self.hideColumn(col)
+        QObject.connect(self.selectionModel(),
+                        SIGNAL('selectionChanged(QItemSelection, QItemSelection)'),
+                        self.show_dir)
+
+    @Slot("QItemSelection, QItemSelection")
+    def show_dir(self, selected, deselected):
+        print(selected.data())
+        print(deselected)
 
 
 class App(QApplication):
