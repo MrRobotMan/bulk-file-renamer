@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 import os
-from PySide6.QtCore import QDir, QModelIndex, Slot, QObject, SIGNAL
+from PySide6.QtCore import QDir, QModelIndex, Slot
 from PySide6.QtWidgets import QApplication, QTreeView, QFileSystemModel
 
 """
