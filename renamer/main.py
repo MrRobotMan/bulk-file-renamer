@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
-from PySide6.QtCore import QDir, Slot, QObject, SIGNAL
+import os
+from PySide6.QtCore import QDir, QModelIndex, Slot, QObject, SIGNAL
 from PySide6.QtWidgets import QApplication, QTreeView, QFileSystemModel
 
 """
@@ -9,6 +10,7 @@ Planning:
     1. directory tree
     2. files in directory
     3. renaming options
+    4. Path bar
 
 files should show current name and new name
 select which files in a directory we want to rename
@@ -24,8 +26,9 @@ rename options include:
 
 
 class directory_tree(QTreeView):
-    def __init__(self, path):
-        super(directory_tree, self).__init__()
+    def __init__(self, path, parent=None):
+        super(directory_tree, self).__init__(parent)
+        self.path = QDir(path)
         self.model = QFileSystemModel()
         self.model.setRootPath(path)
         self.model.setFilter(QDir.AllDirs | QDir.NoDotAndDotDot)
@@ -34,24 +37,33 @@ class directory_tree(QTreeView):
         self.setIndentation(10)
         for col in range(1, 4):
             self.hideColumn(col)
-        QObject.connect(self.selectionModel(),
-                        SIGNAL('selectionChanged(QItemSelection, QItemSelection)'),
-                        self.show_dir)
+        self.clicked.connect(self.show_dir)
 
-    @Slot("QItemSelection, QItemSelection")
-    def show_dir(self, selected, deselected):
-        print(selected.data())
-        print(deselected)
+    @Slot(QModelIndex)
+    def show_dir(self, index):
+        index = self.model.index(index.row(), 0, index.parent())
+        path = QDir(self.model.filePath(index))
+        try:
+            common = os.path.commonpath([self.path.absolutePath(), path.absolutePath()])
+            self.setExpanded(self.model.index(common), False)
+        except ValueError:
+            self.collapseAll()
+        if path.isEmpty(filters=QDir.Filters(QDir.AllDirs | QDir.NoDotAndDotDot)):
+            current = Path(self.model.filePath(index))
+            self.setExpanded(self.model.index(str(current.parent)), True)
+        else:
+            self.setExpanded(index, True)
+        self.path = path
 
 
 class App(QApplication):
     def __init__(self, args):
         super().__init__()
-        if len(args) > 1:
-            path = args[1]
-        else:
-            path = QDir.currentPath()
-        tree = directory_tree(path)
+        try:
+            path = Path(sys.argv[1])
+        except IndexError:
+            path = Path().absolute()
+        tree = directory_tree(str(path))
         tree.show()
         self.exec_()
 
