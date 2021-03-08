@@ -1,0 +1,1 @@
+& $PSScriptRoot\.env\scripts\python.exe $PSScriptRoot\renamer\main.py

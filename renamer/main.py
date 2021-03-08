@@ -1,8 +1,11 @@
+#! C:/Users/David.Weiss/Programming/Python/bulk-renamer/.env/scripts
+
 from pathlib import Path
 import sys
-import os
 from PySide6.QtCore import QDir, QModelIndex, Slot
-from PySide6.QtWidgets import QApplication, QTreeView, QFileSystemModel
+from PySide6.QtWidgets import (QApplication, QGridLayout, QHBoxLayout,
+                               QLineEdit, QLabel, QMainWindow, QToolButton, QTreeView,
+                               QFileSystemModel, QWidget)
 
 """
 Planning:
@@ -25,15 +28,32 @@ rename options include:
 """
 
 
+class directory_box(QHBoxLayout):
+    def __init__(self, path: str, parent=None):
+        super().__init__(parent)
+        self.path = path
+        label = QLabel('Directory:')
+        self.edit = QLineEdit(self.path)
+        btn = QToolButton()
+        btn.clicked.connect(self.set_dir)
+        self.addWidget(label)
+        self.addWidget(self.edit)
+        self.addWidget(btn)
+
+    def set_dir(self):
+        self.path = self.edit.text()
+
+
+
 class directory_tree(QTreeView):
-    def __init__(self, path, parent=None):
-        super(directory_tree, self).__init__(parent)
-        self.path = QDir(path)
+    def __init__(self, path: str, parent=None):
+        super().__init__(parent)
+        self.path = path
         self.model = QFileSystemModel()
-        self.model.setRootPath(path)
+        self.model.setRootPath(self.path)
         self.model.setFilter(QDir.AllDirs | QDir.NoDotAndDotDot)
         self.setModel(self.model)
-        self.setCurrentIndex(self.model.index(path))
+        self.setCurrentIndex(self.model.index(self.path))
         self.setIndentation(10)
         for col in range(1, 4):
             self.hideColumn(col)
@@ -41,33 +61,41 @@ class directory_tree(QTreeView):
 
     @Slot(QModelIndex)
     def show_dir(self, index):
-        index = self.model.index(index.row(), 0, index.parent())
-        path = QDir(self.model.filePath(index))
-        try:
-            common = os.path.commonpath([self.path.absolutePath(), path.absolutePath()])
-            self.setExpanded(self.model.index(common), False)
-        except ValueError:
-            self.collapseAll()
-        if path.isEmpty(filters=QDir.Filters(QDir.AllDirs | QDir.NoDotAndDotDot)):
-            current = Path(self.model.filePath(index))
-            self.setExpanded(self.model.index(str(current.parent)), True)
-        else:
-            self.setExpanded(index, True)
-        self.path = path
+        current = self.model.filePath(index)
+        self.setCurrentIndex(index)
+        self.path = current
 
 
-class App(QApplication):
-    def __init__(self, args):
+class main_window(QMainWindow):
+    def __init__(self, path):
         super().__init__()
-        try:
-            path = Path(sys.argv[1])
-        except IndexError:
-            path = Path().absolute()
-        tree = directory_tree(str(path))
-        tree.show()
-        self.exec_()
+        self.path = str(path)
+        self.initUI()
+
+    def initUI(self):
+        self.setGeometry(300, 300, 300, 300)
+        centralWidget = QWidget()
+        grid = QGridLayout()
+        dir_label = directory_box(self.path)
+        tree = directory_tree(self.path)
+        grid.addLayout(dir_label, 0, 0, 1, 3)
+        grid.addWidget(tree, 1, 0)
+
+        centralWidget.setLayout(grid)
+        self.setCentralWidget(centralWidget)
+
+        self.show()
+
+
+def main():
+    try:
+        path = Path(sys.argv[1])
+    except IndexError:
+        path = Path().absolute()
+    app = QApplication(sys.argv)
+    win =  main_window(path)
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
-    app = App(sys.argv)
-    sys.exit()
+    main()
