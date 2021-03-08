@@ -31,60 +31,64 @@ rename options include:
 class directory_box(QHBoxLayout):
     def __init__(self, path: str, parent=None):
         super().__init__(parent)
-        self.path = path
-        label = QLabel('Directory:')
-        self.edit = QLineEdit(self.path)
-        btn = QToolButton()
-        btn.clicked.connect(self.set_dir)
-        self.addWidget(label)
+        self.edit = QLineEdit(path)
+        self.btn = QToolButton()
+        self.addWidget(QLabel('Directory:'))
         self.addWidget(self.edit)
-        self.addWidget(btn)
+        self.addWidget(self.btn)
 
     def set_dir(self):
         self.path = self.edit.text()
 
 
-
 class directory_tree(QTreeView):
     def __init__(self, path: str, parent=None):
         super().__init__(parent)
-        self.path = path
         self.model = QFileSystemModel()
-        self.model.setRootPath(self.path)
+        self.model.setRootPath(path)
         self.model.setFilter(QDir.AllDirs | QDir.NoDotAndDotDot)
         self.setModel(self.model)
-        self.setCurrentIndex(self.model.index(self.path))
         self.setIndentation(10)
         for col in range(1, 4):
             self.hideColumn(col)
-        self.clicked.connect(self.show_dir)
 
-    @Slot(QModelIndex)
-    def show_dir(self, index):
-        current = self.model.filePath(index)
-        self.setCurrentIndex(index)
-        self.path = current
+        self.init_dir(path)
+
+    def init_dir(self, path):
+        self.setCurrentIndex(self.model.index(path))
 
 
 class main_window(QMainWindow):
     def __init__(self, path):
         super().__init__()
         self.path = str(path)
+        self.dir_entry = directory_box(self.path)
+        self.tree = directory_tree(self.path)
+
+        self.dir_entry.btn.clicked.connect(self.set_tree)
+        self.tree.clicked.connect(self.set_dir)
         self.initUI()
 
     def initUI(self):
-        self.setGeometry(300, 300, 300, 300)
         centralWidget = QWidget()
         grid = QGridLayout()
-        dir_label = directory_box(self.path)
-        tree = directory_tree(self.path)
-        grid.addLayout(dir_label, 0, 0, 1, 3)
-        grid.addWidget(tree, 1, 0)
+        grid.addLayout(self.dir_entry, 0, 0, 1, 3)
+        grid.addWidget(self.tree, 1, 0)
 
         centralWidget.setLayout(grid)
         self.setCentralWidget(centralWidget)
 
         self.show()
+
+    def set_tree(self):
+        new_dir = self.dir_entry.edit.text()
+        index = self.tree.model.index(new_dir)
+        self.tree.setCurrentIndex(index)
+
+    @Slot(QModelIndex)
+    def set_dir(self, index):
+        current = self.tree.model.filePath(index)
+        self.dir_entry.edit.setText(current)
 
 
 def main():
