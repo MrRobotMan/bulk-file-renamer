@@ -1,2 +1,5 @@
 **/__pychache__/
 .env/
+renamer/__pycache__/__init__.cpython-39.pyc
+.gitignore
+renamer/__pycache__/main.cpython-39.pyc

@@ -1,1 +1,1 @@
-& $PSScriptRoot\.env\scripts\python.exe $PSScriptRoot\renamer\main.py
+& $PSScriptRoot\.env\scripts\python.exe $PSScriptRoot\rename.py
