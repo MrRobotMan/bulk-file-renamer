@@ -73,10 +73,21 @@ class directory_table(QTableView):
         self.setSortingEnabled(True)
         self.model = files(path)
         self.setModel(self.model)
+        self.setColumnWidth(0, 200)
+        self.setColumnWidth(1, 200)
+        self.resizeColumnToContents(2)
+        self.resizeColumnToContents(3)
+        selection = self.selectionModel()
+        selection.selectionChanged.connect(self.output)
+        self.clicked.connect(self.output)
 
     def update_view(self, path):
         self.model = files(path)
         self.setModel(self.model)
+
+    @Slot()
+    def output(self, index):
+        print(index)
 
 
 class directory_box(QHBoxLayout):
@@ -110,7 +121,6 @@ class directory_tree(QTreeView):
 class main_window(QMainWindow):
     def __init__(self, path):
         super().__init__()
-        self.setGeometry(100, 100, 800, 600)
         self.path = str(path)
         self.model = QFileSystemModel()
         self.model.setRootPath(self.path)
@@ -133,7 +143,7 @@ class main_window(QMainWindow):
         grid.setColumnStretch(1, 1)
         grid.addLayout(self.dir_entry, 0, 0, 1, 3)
         grid.addWidget(self.tree, 1, 0)
-        grid.addWidget(self.files, 1, 1, 1, -1)
+        grid.addWidget(self.files, 1, 1)
 
         centralWidget.setLayout(grid)
         self.setCentralWidget(centralWidget)
