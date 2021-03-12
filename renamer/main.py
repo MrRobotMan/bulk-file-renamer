@@ -26,9 +26,9 @@ rename options include:
     replace x with y
     wholly rename
     change case (upper, lower, title, sentence)
-    remove from start, end, position to y or num of chars / words
+    remove from start, end, position to y, exact of chars / words, crop before or after
     add prefix, insert at pos, suffix
-    auto-numbering
+    auto-numbering prefix, suffix, prefix + suffix, insert at
 """
 
 
@@ -73,11 +73,11 @@ class directory_table(QTableView):
         self.setSortingEnabled(True)
         self.model = files(path)
         self.setModel(self.model)
-        self.setColumnWidth(0, 200)
-        self.setColumnWidth(1, 200)
-        self.setColumnWidth(2, 75)
-        self.setColumnWidth(3, 150)
-        self.setFixedSize(650, 400)
+        self.setColumnWidth(0, 300)
+        self.setColumnWidth(1, 300)
+        self.setColumnWidth(2, 150)
+        self.setColumnWidth(3, 300)
+        self.setFixedSize(1050, 400)
 
     def update_view(self, path):
         self.model = files(path)
@@ -106,16 +106,26 @@ class directory_tree(QTreeView):
         for col in range(1, 4):
             self.hideColumn(col)
         self.clicked.connect(self.expand_here)
-        self.setFixedSize(200, 400)
+        self.setFixedSize(175, 400)
 
     @Slot()
     def expand_here(self, index):
         self.expandRecursively(index, 0)
 
 
+class rename_options(QGridLayout):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        name_label = QLabel('Name')
+        name_entry = QLineEdit()
+        self.addWidget(name_label, 0, 0)
+        self.addWidget(name_entry, 1, 0)
+
+
 class main_window(QMainWindow):
     def __init__(self, path):
         super().__init__()
+        self.setWindowTitle('Bulk Rename')
         self.path = str(path)
         self.model = QFileSystemModel()
         self.model.setRootPath(self.path)
@@ -179,9 +189,9 @@ def main():
     window = main_window(path)
     window.show()
 
-    with open('renamer/style.qss', 'r') as f:
-        _style = f.read()
-        app.setStyleSheet(_style)
+    # with open('renamer/style.qss', 'r') as f:
+    #     _style = f.read()
+    #     app.setStyleSheet(_style)
     sys.exit(app.exec_())
 
 
