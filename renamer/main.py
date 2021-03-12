@@ -166,7 +166,8 @@ class main_window(QMainWindow):
     @Slot()
     def show_data(self):
         for index in self.files.selectionModel().selectedRows():
-            print(index)
+            row = index.row()
+            print(self.files.model.item(row, 1).text())
 
 
 def main():
