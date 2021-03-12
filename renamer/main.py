@@ -7,7 +7,7 @@ from PySide6.QtCore import QDir, QModelIndex, Slot, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (QAbstractItemView, QApplication,
                                QFileSystemModel, QGridLayout, QHBoxLayout,
-                               QLabel, QLineEdit, QMainWindow, QTableView,
+                               QLabel, QLineEdit, QMainWindow, QPushButton, QTableView,
                                QToolButton, QTreeView, QWidget)
 
 """
@@ -78,17 +78,10 @@ class directory_table(QTableView):
         self.setColumnWidth(2, 75)
         self.setColumnWidth(3, 150)
         self.setFixedSize(650, 400)
-        selection = self.selectionModel()
-        selection.selectionChanged.connect(self.output)
-        self.clicked.connect(self.output)
 
     def update_view(self, path):
         self.model = files(path)
         self.setModel(self.model)
-
-    @Slot()
-    def output(self, index):
-        print(index)
 
 
 class directory_box(QHBoxLayout):
@@ -100,7 +93,6 @@ class directory_box(QHBoxLayout):
         self.addWidget(QLabel('Directory:'))
         self.addWidget(self.entry)
         self.addWidget(self.btn)
-        self.setSizeConstraint()
 
     def set_dir(self):
         self.path = self.entry.text()
@@ -132,12 +124,15 @@ class main_window(QMainWindow):
         self.dir_entry = directory_box(self.path)
         self.tree = directory_tree(self.model)
         self.files = directory_table(self.path)
+        self.go_button = QPushButton("Get Data")
 
         self.initUI()
 
         self.dir_entry.btn.clicked.connect(self.set_tree)
         self.dir_entry.entry.returnPressed.connect(self.set_tree)
         self.tree.clicked.connect(self.set_dir)
+        self.go_button.clicked.connect(self.show_data)
+
         self.set_tree()
         self.setMaximumSize(self.width(), self.height())
 
@@ -148,6 +143,7 @@ class main_window(QMainWindow):
         grid.addLayout(self.dir_entry, 0, 0, 1, 3)
         grid.addWidget(self.tree, 1, 0)
         grid.addWidget(self.files, 1, 1)
+        grid.addWidget(self.go_button, 2, 0, 1, 3)
 
         centralWidget.setLayout(grid)
         self.setCentralWidget(centralWidget)
@@ -166,6 +162,11 @@ class main_window(QMainWindow):
         self.dir_entry.entry.setText(current)
         self.tree.setCurrentIndex(index)
         self.files.update_view(current)
+
+    @Slot()
+    def show_data(self):
+        for index in self.files.selectionModel().selectedRows():
+            print(index)
 
 
 def main():
