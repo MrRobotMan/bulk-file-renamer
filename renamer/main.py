@@ -3,7 +3,7 @@ import os
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QDir, QModelIndex, Slot
+from PySide6.QtCore import QDir, QModelIndex, Slot, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (QAbstractItemView, QApplication,
                                QFileSystemModel, QGridLayout, QHBoxLayout,
@@ -75,8 +75,9 @@ class directory_table(QTableView):
         self.setModel(self.model)
         self.setColumnWidth(0, 200)
         self.setColumnWidth(1, 200)
-        self.resizeColumnToContents(2)
-        self.resizeColumnToContents(3)
+        self.setColumnWidth(2, 75)
+        self.setColumnWidth(3, 150)
+        self.setFixedSize(650, 400)
         selection = self.selectionModel()
         selection.selectionChanged.connect(self.output)
         self.clicked.connect(self.output)
@@ -95,9 +96,11 @@ class directory_box(QHBoxLayout):
         super().__init__(parent)
         self.entry = QLineEdit(path)
         self.btn = QToolButton()
+        self.btn.setArrowType(Qt.RightArrow)
         self.addWidget(QLabel('Directory:'))
         self.addWidget(self.entry)
         self.addWidget(self.btn)
+        self.setSizeConstraint()
 
     def set_dir(self):
         self.path = self.entry.text()
@@ -111,7 +114,7 @@ class directory_tree(QTreeView):
         for col in range(1, 4):
             self.hideColumn(col)
         self.clicked.connect(self.expand_here)
-        self.resizeColumnToContents(0)
+        self.setFixedSize(200, 400)
 
     @Slot()
     def expand_here(self, index):
@@ -136,6 +139,7 @@ class main_window(QMainWindow):
         self.dir_entry.entry.returnPressed.connect(self.set_tree)
         self.tree.clicked.connect(self.set_dir)
         self.set_tree()
+        self.setMaximumSize(self.width(), self.height())
 
     def initUI(self):
         centralWidget = QWidget()
@@ -147,8 +151,6 @@ class main_window(QMainWindow):
 
         centralWidget.setLayout(grid)
         self.setCentralWidget(centralWidget)
-
-        self.show()
 
     @Slot()
     def set_tree(self, path=None):
@@ -173,6 +175,11 @@ def main():
         path = Path().absolute()
     app = QApplication(sys.argv)
     window = main_window(path)
+    window.show()
+
+    with open('renamer/style.qss', 'r') as f:
+        _style = f.read()
+        app.setStyleSheet(_style)
     sys.exit(app.exec_())
 
 
