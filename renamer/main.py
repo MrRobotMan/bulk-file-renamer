@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QDir, QModelIndex, Slot, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel
-from PySide6.QtWidgets import (QAbstractItemView, QApplication,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
                                QFileSystemModel, QGridLayout, QHBoxLayout,
                                QLabel, QLineEdit, QMainWindow, QPushButton, QTableView,
                                QToolButton, QTreeView, QWidget)
@@ -113,13 +113,43 @@ class directory_tree(QTreeView):
         self.expandRecursively(index, 0)
 
 
+class rename_box(QGridLayout):
+    def __init__(self, title: str, widgets: list, labels: list = [], parent=None) -> None:
+        super().__init__(parent)
+        self.addWidget(QLabel(title), 0, 0)
+        widget_col = 0
+        if labels:
+            for row, label in enumerate(labels, start=1):
+                self.addWidget(QLabel(label), row, 0)
+            widget_col = 1
+        for row, widget in enumerate(widgets, start=1):
+            self.addWidget(widget, row, widget_col)
+        return None
+
+
 class rename_options(QGridLayout):
     def __init__(self, parent=None):
         super().__init__(parent)
-        name_label = QLabel('Name')
-        name_entry = QLineEdit()
-        self.addWidget(name_label, 0, 0)
-        self.addWidget(name_entry, 1, 0)
+        self.rename = QPushButton('Rename')
+
+        self.name_entry = QLineEdit()
+        name_box = rename_box('Name', [self.name_entry])
+
+        self.replace_entry_search = QLineEdit()
+        self.replace_entry_text = QLineEdit()
+        replace_box = rename_box('Replace', [self.replace_entry_search,
+                                             self.replace_entry_text])
+
+        self.case_select = QComboBox()
+        self.case_select.addItems(['Upper', 'Lower', 'Title', 'Sentence'])
+        self.case_select.setEditable(False)
+        self.case_except = QLineEdit()
+        case_box = rename_box('Case', [self.case_select, self.case_except])
+
+        self.addLayout(name_box, 0, 0)
+        self.addLayout(replace_box, 1, 0)
+        self.addLayout(case_box, 2, 0)
+        self.addWidget(self.rename, 0, 1)
 
 
 class main_window(QMainWindow):
@@ -134,14 +164,14 @@ class main_window(QMainWindow):
         self.dir_entry = directory_box(self.path)
         self.tree = directory_tree(self.model)
         self.files = directory_table(self.path)
-        self.go_button = QPushButton("Get Data")
+        self.rename_opts = rename_options()
 
         self.initUI()
 
         self.dir_entry.btn.clicked.connect(self.set_tree)
         self.dir_entry.entry.returnPressed.connect(self.set_tree)
         self.tree.clicked.connect(self.set_dir)
-        self.go_button.clicked.connect(self.show_data)
+        self.rename_opts.rename.clicked.connect(self.show_data)
 
         self.set_tree()
         self.setMaximumSize(self.width(), self.height())
@@ -153,7 +183,7 @@ class main_window(QMainWindow):
         grid.addLayout(self.dir_entry, 0, 0, 1, 3)
         grid.addWidget(self.tree, 1, 0)
         grid.addWidget(self.files, 1, 1)
-        grid.addWidget(self.go_button, 2, 0, 1, 3)
+        grid.addLayout(self.rename_opts, 2, 0, 1, 3)
 
         centralWidget.setLayout(grid)
         self.setCentralWidget(centralWidget)
