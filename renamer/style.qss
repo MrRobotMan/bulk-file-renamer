@@ -1,3 +1,15 @@
+directory_table {
+    border: none;
+}
+
+rename_box {
+    border: 1px;
+    padding: 0px;
+}
+
+
+/* Examples:
+
 QListWidget {
     color: #FFFFFF;
     background-color: #33373B;
@@ -11,9 +23,6 @@ QListWidget::item:selected {
     background-color: #2ABf9E;
 }
 
-QTableView {
-    border: none;
-}
 
 QLabel {
     background-color: #FFFFFF;
@@ -24,4 +33,4 @@ QPushButton {
     background-color: #2ABf9E;
     padding: 20px;
     font-size: 18px;
-}
+} */

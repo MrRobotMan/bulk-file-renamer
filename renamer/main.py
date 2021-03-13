@@ -5,9 +5,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QDir, QModelIndex, Slot, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox,
                                QFileSystemModel, QGridLayout, QHBoxLayout,
-                               QLabel, QLineEdit, QMainWindow, QPushButton, QTableView,
+                               QLabel, QLineEdit, QMainWindow, QPushButton, QSpinBox, QTableView,
                                QToolButton, QTreeView, QWidget)
 
 """
@@ -114,17 +114,45 @@ class directory_tree(QTreeView):
 
 
 class rename_box(QGridLayout):
-    def __init__(self, title: str, widgets: list, labels: list = [], parent=None) -> None:
+    def __init__(self, title: str, widgets: list, labels: list = None,
+                 widgets2: list = None, labels2: list = None, parent=None) -> None:
         super().__init__(parent)
+        self.widgets = widgets
+        self.widgets2 = widgets2
+        columns = sum(x is not None for x in [labels, widgets2, labels2])
+        columns = max(1, columns)
+        self.clear = QPushButton('X')
+        self.clear.setFixedSize(15, 15)
         self.addWidget(QLabel(title), 0, 0)
-        widget_col = 0
-        if labels:
-            for row, label in enumerate(labels, start=1):
+        self.addWidget(self.clear, 0, columns, Qt.AlignRight)
+        for row, widget in enumerate(self.widgets, start=1):
+            widget_col = 0
+            col_span = 2
+            label = labels[row - 1] if labels else ''
+            if label:
                 self.addWidget(QLabel(label), row, 0)
-            widget_col = 1
-        for row, widget in enumerate(widgets, start=1):
-            self.addWidget(widget, row, widget_col)
+                widget_col += 1
+                col_span = 1
+            self.addWidget(widget, row, widget_col, 1, col_span)
+
+        if self.widgets2:
+            for row, widget in enumerate(self.widgets2, start=1):
+                widget_col = 2 if labels else 1
+                col_span = 2
+                label = labels2[row - 1] if labels else ''
+                if label:
+                    self.addWidget(QLabel(label), row, widget_col)
+                    widget_col += 1
+                    col_span = 1
+                self.addWidget(widget, row, widget_col, 1, col_span)
         return None
+
+
+class blank_spinbox(QSpinBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setSpecialValueText('-')
+        self.setFixedWidth(50)
 
 
 class rename_options(QGridLayout):
@@ -137,19 +165,65 @@ class rename_options(QGridLayout):
 
         self.replace_entry_search = QLineEdit()
         self.replace_entry_text = QLineEdit()
-        replace_box = rename_box('Replace', [self.replace_entry_search,
-                                             self.replace_entry_text])
+        replace_box = rename_box('Replace',
+                                 [self.replace_entry_search, self.replace_entry_text],
+                                 ['Replace', 'With'])
 
         self.case_select = QComboBox()
         self.case_select.addItems(['Upper', 'Lower', 'Title', 'Sentence'])
         self.case_select.setEditable(False)
         self.case_except = QLineEdit()
-        case_box = rename_box('Case', [self.case_select, self.case_except])
+        case_box = rename_box('Case', [self.case_select, self.case_except],
+                              ['', 'Except'])
+
+        self.add_prefix = QLineEdit()
+        self.add_insert = QLineEdit()
+        self.add_insert_pos = blank_spinbox()
+        self.add_suffix = QLineEdit()
+        add_box = rename_box('Add',
+                             [self.add_prefix, self.add_insert,
+                              self.add_insert_pos, self.add_suffix],
+                             ['Prefix', 'Insert', 'At', 'Suffix'])
+
+        self.remove_first = blank_spinbox()
+        self.remove_last = blank_spinbox()
+        self.remove_from = blank_spinbox()
+        self.remove_to = blank_spinbox()
+        self.remove_chars = QLineEdit()
+        self.remove_words = QLineEdit()
+        self.remove_crop_pos = QComboBox()
+        self.remove_crop_pos.addItems(['Before', 'After'])
+        self.remove_crop_pos.setEditable(False)
+        self.remove_crop = QLineEdit()
+        remove_box = rename_box('Remove',
+                                [self.remove_first, self.remove_from,
+                                 self.remove_chars, self.remove_crop_pos],
+                                ['First', 'From', 'Chars', 'Crop'],
+                                [self.remove_last, self.remove_to,
+                                 self.remove_words, self.remove_crop],
+                                ['Last', 'To', 'Words', ''])
+
+        self.num_prefix = QCheckBox()
+        self.num_suffix = QCheckBox()
+        self.num_insert = QCheckBox()
+        self.num_pos = blank_spinbox()
+        self.num_start = blank_spinbox()
+        self.num_incr = blank_spinbox()
+        self.num_pad = blank_spinbox()
+        self.num_sep = QLineEdit()
+        num_box = rename_box('Auto Number',
+                             [self.num_prefix, self.num_insert, self.num_start, self.num_pad],
+                             ['Prefix', 'Insert', 'Start', 'Pad'],
+                             [self.num_suffix, self.num_pos, self.num_incr, self.num_sep],
+                             ['Suffix', 'At', 'Incr.', 'Sep.'])
 
         self.addLayout(name_box, 0, 0)
         self.addLayout(replace_box, 1, 0)
         self.addLayout(case_box, 2, 0)
-        self.addWidget(self.rename, 0, 1)
+        self.addLayout(add_box, 0, 1, 2, 1)
+        self.addLayout(remove_box, 0, 2, 2, 1)
+        self.addLayout(num_box, 0, 3, 2, 1)
+        self.addWidget(self.rename, 2, 3)
 
 
 class main_window(QMainWindow):
@@ -219,9 +293,9 @@ def main():
     window = main_window(path)
     window.show()
 
-    # with open('renamer/style.qss', 'r') as f:
-    #     _style = f.read()
-    #     app.setStyleSheet(_style)
+    with open('renamer/style.qss', 'r') as f:
+        _style = f.read()
+        app.setStyleSheet(_style)
     sys.exit(app.exec_())
 
 
