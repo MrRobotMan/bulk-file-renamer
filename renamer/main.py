@@ -15,8 +15,9 @@ Planning:
     GUI window with panes for
     1. directory tree - Done
     2. files in directory - Done
-    3. renaming options
+    3. renaming options - Done
     4. Path bar - Done
+    5. Rename logic / slots / etc
 
 files should show current name and new name
 select which files in a directory we want to rename
