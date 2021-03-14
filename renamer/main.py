@@ -33,67 +33,71 @@ rename options include:
 """
 
 
-class files(QStandardItemModel):
-    def __init__(self, path, parent=None):
-        super().__init__(parent)
-        self.path = Path(path)
-        self.setHorizontalHeaderLabels(['Name', 'New Name', 'Type', 'Modified'])
-        rows = len(list(self.path.iterdir()))
-        self.setRowCount(rows)
-        self.setColumnCount(4)
-        for row, child in enumerate(self.path.iterdir()):
-            name = QStandardItem(str(child.stem))
-            new_name = QStandardItem(str(child.stem))
-            if child.is_dir():
-                ext = QStandardItem('File Folder')
-            else:
-                ext = QStandardItem(str(child.suffix))
-            modified = QStandardItem(self.format_time(child))
-            row_data = [name, new_name, ext, modified]
-            for col, item in enumerate(row_data):
-                self.setItem(row, col, item)
-
-    def format_time(self, path):
-        """
-        Takes a path and returns the last modified time in D/M/YYYY H:mm:ss AM/PM format
-        """
-        mod = os.path.getmtime(path)
-        formatted = time.localtime(mod)
-        clean = time.strftime('%d/%m/%Y %I:%M:%S %p', formatted).replace('/0', '/')
-        if clean.startswith('0'):
-            return clean[1:]
-        return clean
+def files(path: str, parent=None) -> QStandardItemModel:
+    path = Path(path)
+    model = QStandardItemModel(parent)
+    model.setHorizontalHeaderLabels(['Name', 'New Name', 'Type', 'Modified'])
+    rows = len(list(path.iterdir()))
+    model.setRowCount(rows)
+    model.setColumnCount(4)
+    for row, child in enumerate(path.iterdir()):
+        name = QStandardItem(str(child.stem))
+        new_name = QStandardItem(str(child.stem))
+        if child.is_dir():
+            ext = QStandardItem('File Folder')
+        else:
+            ext = QStandardItem(str(child.suffix))
+        modified = QStandardItem(format_time(child))
+        row_data = [name, new_name, ext, modified]
+        for col, item in enumerate(row_data):
+            model.setItem(row, col, item)
+    return model
 
 
-class directory_table(QTableView):
-    def __init__(self, model, parent=None):
-        super().__init__(parent)
-        self.update_view(model)
-        self.verticalHeader().hide()
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setSortingEnabled(True)
-        self.setColumnWidth(0, 300)
-        self.setColumnWidth(1, 300)
-        self.setColumnWidth(2, 150)
-        self.setColumnWidth(3, 300)
-        self.setFixedSize(1050, 400)
-
-    def update_view(self, model):
-        self.setModel(model)
+def format_time(path: Path) -> str:
+    """
+    Takes a path and returns the last modified time in D/M/YYYY H:mm:ss AM/PM format
+    """
+    mod = os.path.getmtime(path)
+    formatted = time.localtime(mod)
+    clean = time.strftime('%d/%m/%Y %I:%M:%S %p', formatted).replace('/0', '/')
+    if clean.startswith('0'):
+        return clean[1:]
+    return clean
 
 
-class directory_box(QHBoxLayout):
-    def __init__(self, path, parent=None):
-        super().__init__(parent)
-        self.entry = QLineEdit(path)
-        self.btn = QToolButton()
-        self.btn.setArrowType(Qt.RightArrow)
-        self.addWidget(QLabel('Directory:'))
-        self.addWidget(self.entry)
-        self.addWidget(self.btn)
+def blank_spinbox(parent=None) -> QSpinBox:
+    spin = QSpinBox(parent)
+    spin.setSpecialValueText('-')
+    spin.setFixedWidth(50)
+    return spin
 
-    def set_dir(self):
-        self.path = self.entry.text()
+
+def directory_table(model: QStandardItemModel, parent=None) -> QTableView:
+    table = QTableView(parent)
+    table.setModel(model)
+    table.verticalHeader().hide()
+    table.setSelectionBehavior(QAbstractItemView.SelectRows)
+    table.setSortingEnabled(True)
+    table.setColumnWidth(0, 300)
+    table.setColumnWidth(1, 300)
+    table.setColumnWidth(2, 150)
+    table.setColumnWidth(3, 300)
+    table.setFixedSize(1050, 400)
+
+    return table
+
+
+def directory_box(path: str, parent=None) -> tuple(QHBoxLayout, QLineEdit, QToolButton):
+    box = QHBoxLayout(parent)
+    entry = QLineEdit(path)
+    btn = QToolButton()
+    btn.setArrowType(Qt.RightArrow)
+    box.addWidget(QLabel('Directory:'))
+    box.addWidget(entry)
+    box.addWidget(btn)
+
+    return box, entry, btn
 
 
 class directory_tree(QTreeView):
@@ -144,13 +148,6 @@ class rename_box(QGridLayout):
                     col_span = 1
                 self.addWidget(widget, row, widget_col, 1, col_span)
         return None
-
-
-class blank_spinbox(QSpinBox):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setSpecialValueText('-')
-        self.setFixedWidth(50)
 
 
 class rename_options(QGridLayout):
@@ -234,15 +231,15 @@ class main_window(QMainWindow):
         self.tree_model.setFilter(QDir.AllDirs | QDir.NoDotAndDotDot)
         self.files_model = files(path)
 
-        self.dir_entry = directory_box(self.path)
+        self.dir_box, self.dir_entry, self.dir_btn = directory_box(self.path)
         self.tree = directory_tree(self.tree_model)
         self.files = directory_table(self.files_model)
         self.rename_opts = rename_options()
 
         self.initUI()
 
-        self.dir_entry.btn.clicked.connect(self.set_tree)
-        self.dir_entry.entry.returnPressed.connect(self.set_tree)
+        self.dir_btn.clicked.connect(self.set_tree)
+        self.dir_entry.returnPressed.connect(self.set_tree)
         self.tree.clicked.connect(self.set_dir)
         self.rename_opts.rename.clicked.connect(self.show_data)
 
@@ -253,7 +250,7 @@ class main_window(QMainWindow):
         centralWidget = QWidget()
         grid = QGridLayout()
         grid.setColumnStretch(1, 1)
-        grid.addLayout(self.dir_entry, 0, 0, 1, 3)
+        grid.addLayout(self.dir_box, 0, 0, 1, 3)
         grid.addWidget(self.tree, 1, 0)
         grid.addWidget(self.files, 1, 1)
         grid.addLayout(self.rename_opts, 2, 0, 1, 3)
@@ -267,7 +264,7 @@ class main_window(QMainWindow):
         index = self.tree_model.index(path)
         self.tree.setCurrentIndex(index)
         self.tree.expandRecursively(index, 0)
-        self.files.update_view(self.files_model)
+        self.files.setModel(self.files_model)
 
     @Slot(QModelIndex)
     def set_dir(self, index):
@@ -275,7 +272,7 @@ class main_window(QMainWindow):
         self.files_model = files(current)
         self.dir_entry.entry.setText(current)
         self.tree.setCurrentIndex(index)
-        self.files.update_view(self.files_model)
+        self.files.setModel(self.files_model)
 
     @Slot()
     def show_data(self):
