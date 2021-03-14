@@ -66,23 +66,20 @@ class files(QStandardItemModel):
 
 
 class directory_table(QTableView):
-    def __init__(self, path, parent=None):
+    def __init__(self, model, parent=None):
         super().__init__(parent)
-        self.update_view(path)
+        self.update_view(model)
         self.verticalHeader().hide()
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.setSortingEnabled(True)
-        self.model = files(path)
-        self.setModel(self.model)
         self.setColumnWidth(0, 300)
         self.setColumnWidth(1, 300)
         self.setColumnWidth(2, 150)
         self.setColumnWidth(3, 300)
         self.setFixedSize(1050, 400)
 
-    def update_view(self, path):
-        self.model = files(path)
-        self.setModel(self.model)
+    def update_view(self, model):
+        self.setModel(model)
 
 
 class directory_box(QHBoxLayout):
@@ -232,13 +229,14 @@ class main_window(QMainWindow):
         super().__init__()
         self.setWindowTitle('Bulk Rename')
         self.path = str(path)
-        self.model = QFileSystemModel()
-        self.model.setRootPath(self.path)
-        self.model.setFilter(QDir.AllDirs | QDir.NoDotAndDotDot)
+        self.tree_model = QFileSystemModel()
+        self.tree_model.setRootPath(self.path)
+        self.tree_model.setFilter(QDir.AllDirs | QDir.NoDotAndDotDot)
+        self.files_model = files(path)
 
         self.dir_entry = directory_box(self.path)
-        self.tree = directory_tree(self.model)
-        self.files = directory_table(self.path)
+        self.tree = directory_tree(self.tree_model)
+        self.files = directory_table(self.files_model)
         self.rename_opts = rename_options()
 
         self.initUI()
@@ -266,23 +264,24 @@ class main_window(QMainWindow):
     @Slot()
     def set_tree(self, path=None):
         path = self.dir_entry.entry.text() if not path else path
-        index = self.model.index(path)
+        index = self.tree_model.index(path)
         self.tree.setCurrentIndex(index)
         self.tree.expandRecursively(index, 0)
-        self.files.update_view(path)
+        self.files.update_view(self.files_model)
 
     @Slot(QModelIndex)
     def set_dir(self, index):
-        current = self.model.filePath(index)
+        current = self.tree_model.filePath(index)
+        self.files_model = files(current)
         self.dir_entry.entry.setText(current)
         self.tree.setCurrentIndex(index)
-        self.files.update_view(current)
+        self.files.update_view(self.files_model)
 
     @Slot()
     def show_data(self):
         for index in self.files.selectionModel().selectedRows():
             row = index.row()
-            print(self.files.model.item(row, 1).text())
+            print(self.files_model.item(row, 1).text())
 
 
 def main():
