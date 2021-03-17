@@ -1,10 +1,11 @@
-import sys
 import os
+import re
+import sys
 import time
 from typing import Union
 from pathlib import Path
 
-from PySide6.QtCore import QDir, QModelIndex, Slot, Qt
+from PySide6.QtCore import QDir, QModelIndex, Slot, Qt, Signal
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox,
                                QFileSystemModel, QGridLayout, QHBoxLayout,
@@ -37,7 +38,7 @@ rename options include:
 def files(path: str, parent=None) -> QStandardItemModel:
     """
     Creates a model listing for the files in a directory.
-    These include the current file name, the new name (for use with rename_box),
+    These include the current file name, the new name (for use with RenameBox),
     the file type and the last modified date / time.
     """
     path = Path(path)
@@ -98,7 +99,8 @@ def directory_table(model: QStandardItemModel, parent=None) -> QTableView:
     return table
 
 
-class rename_box(QGridLayout):
+class RenameBox(QGridLayout):
+    change_signal = Signal(bool)
     """
     Creates a grid for each section of the rename options.
     """
@@ -123,7 +125,9 @@ class rename_box(QGridLayout):
             col_span = 2
             label = labels[row - 1] if labels else ''
             if label:
-                self.addWidget(QLabel(label), row, 0)
+                label_ = QLabel(label)
+                label_.setFixedWidth(40)
+                self.addWidget(label_, row, 0)
                 widget_col += 1
                 col_span = 1
             self.addWidget(widget, row, widget_col, 1, col_span)
@@ -134,16 +138,22 @@ class rename_box(QGridLayout):
                 col_span = 2
                 label = labels2[row - 1] if labels else ''
                 if label:
-                    self.addWidget(QLabel(label), row, widget_col)
+                    label_ = QLabel(label)
+                    label_.setFixedWidth(40)
+                    self.addWidget(label_, row, widget_col)
                     widget_col += 1
                     col_span = 1
                 self.addWidget(widget, row, widget_col, 1, col_span)
+
+    def setChanged(self, state: bool = True):
+        self.changed = state
+        self.change_signal.emit(self.changed)
 
     def clear_fields(self) -> None:
         """
         Loops through the widgets and clears each.
         """
-        self.changed = False
+        self.setChanged(False)
         for widget in self.all:
             if isinstance(widget, QLineEdit):
                 widget.clear()
@@ -155,38 +165,37 @@ class rename_box(QGridLayout):
                 widget.setChecked(False)
 
 
-class rename_options(QGridLayout):
+class RenameOptions(QGridLayout):
     def __init__(self, model: QStandardItemModel, view: QTableView, parent=None) -> None:
         super().__init__(parent)
         self.model = model
         self.view = view
+        self.selection()
         self.reset = QPushButton('Reset')
         self.reset.clicked.connect(self.reset_all)
-        self.preview = QPushButton('Preview')
-        self.preview.clicked.connect(self.preview_changes)
         self.rename = QPushButton('Rename')
         self.rename.clicked.connect(self.finalize)
-        for btn in [self.reset, self.preview, self.rename]:
+        for btn in [self.reset, self.rename]:
             btn.setFixedWidth(50)
 
         self.name_entry = QLineEdit()
-        self.name_box = rename_box('Name', [self.name_entry])
+        self.name_box = RenameBox('Name', [self.name_entry])
         self.name_entry.editingFinished.connect(lambda: self.changed(self.name_box))
 
         self.replace_entry_search = QLineEdit()
         self.replace_entry_text = QLineEdit()
-        self.replace_box = rename_box('Replace',
-                                      [self.replace_entry_search, self.replace_entry_text],
-                                      ['Replace', 'With'])
+        self.replace_box = RenameBox('Replace',
+                                     [self.replace_entry_search, self.replace_entry_text],
+                                     ['Replace', 'With'])
         self.replace_entry_search.editingFinished.connect(lambda: self.changed(self.replace_box))
         self.replace_entry_text.editingFinished.connect(lambda: self.changed(self.replace_box))
 
         self.case_select = QComboBox()
-        self.case_select.addItems(['Upper', 'Lower', 'Title', 'Sentence'])
+        self.case_select.addItems(['Same', 'Upper', 'Lower', 'Title', 'Sentence'])
         self.case_select.setEditable(False)
         self.case_except = QLineEdit()
-        self.case_box = rename_box('Case', [self.case_select, self.case_except],
-                                   ['', 'Except'])
+        self.case_box = RenameBox('Case', [self.case_select, self.case_except],
+                                  ['', 'Except'])
         self.case_select.currentIndexChanged.connect(lambda: self.changed(self.case_box))
         self.case_except.editingFinished.connect(lambda: self.changed(self.case_box))
 
@@ -194,10 +203,10 @@ class rename_options(QGridLayout):
         self.add_insert = QLineEdit()
         self.add_insert_pos = blank_spinbox()
         self.add_suffix = QLineEdit()
-        self.add_box = rename_box('Add',
-                                  [self.add_prefix, self.add_insert,
-                                   self.add_insert_pos, self.add_suffix],
-                                  ['Prefix', 'Insert', 'At', 'Suffix'])
+        self.add_box = RenameBox('Add',
+                                 [self.add_prefix, self.add_insert,
+                                  self.add_insert_pos, self.add_suffix],
+                                 ['Prefix', 'Insert', 'At pos.', 'Suffix'])
         for widget in [self.add_prefix, self.add_insert, self.add_suffix]:
             widget.editingFinished.connect(lambda: self.changed(self.add_box))
         self.add_insert_pos.valueChanged.connect(lambda: self.changed(self.add_box))
@@ -206,19 +215,20 @@ class rename_options(QGridLayout):
         self.remove_last = blank_spinbox()
         self.remove_from = blank_spinbox()
         self.remove_to = blank_spinbox()
+        self.remove_from.valueChanged.connect(self.min_remove)
         self.remove_chars = QLineEdit()
         self.remove_words = QLineEdit()
         self.remove_crop_pos = QComboBox()
         self.remove_crop_pos.addItems(['Before', 'After'])
         self.remove_crop_pos.setEditable(False)
         self.remove_crop = QLineEdit()
-        self.remove_box = rename_box('Remove',
-                                     [self.remove_first, self.remove_from,
-                                      self.remove_chars, self.remove_crop_pos],
-                                     ['First', 'From', 'Chars', 'Crop'],
-                                     [self.remove_last, self.remove_to,
-                                      self.remove_words, self.remove_crop],
-                                     ['Last', 'To', 'Words', ''])
+        self.remove_box = RenameBox('Remove',
+                                    [self.remove_first, self.remove_from,
+                                     self.remove_chars, self.remove_crop_pos],
+                                    ['First', 'From', 'Chars', 'Crop'],
+                                    [self.remove_last, self.remove_to,
+                                     self.remove_words, self.remove_crop],
+                                    ['Last', 'To', 'Words', ''])
         for widget in [self.remove_first, self.remove_last,
                        self.remove_from, self.remove_to]:
             widget.valueChanged.connect(lambda: self.changed(self.remove_box))
@@ -230,11 +240,14 @@ class rename_options(QGridLayout):
         self.num_suffix = QCheckBox()
         self.num_insert = QCheckBox()
         self.num_pos = blank_spinbox()
-        self.num_start = blank_spinbox()
+        self.num_start = QSpinBox()
+        self.num_start.setFixedWidth(50)
         self.num_incr = blank_spinbox()
+        self.num_incr.setValue(1)
         self.num_pad = blank_spinbox()
         self.num_sep = QLineEdit()
-        self.num_box = rename_box('Auto Number',
+        self.num_sep.setFixedWidth(50)
+        self.num_box = RenameBox('Auto Number',
                                   [self.num_prefix, self.num_insert, self.num_start, self.num_pad],
                                   ['Prefix', 'Insert', 'Start', 'Pad'],
                                   [self.num_suffix, self.num_pos, self.num_incr, self.num_sep],
@@ -245,18 +258,30 @@ class rename_options(QGridLayout):
             widget.valueChanged.connect(lambda: self.changed(self.num_box))
         self.num_sep.editingFinished.connect(lambda: self.changed(self.num_box))
 
-        self.addLayout(self.name_box, 0, 0)
+        for box in [self.name_box, self.replace_box, self.case_box,
+                    self.add_box, self.remove_box, self.num_box]:
+            box.change_signal.connect(self.preview_changes)
+
+        self.addLayout(self.name_box,    0, 0)
         self.addLayout(self.replace_box, 1, 0)
-        self.addLayout(self.case_box, 2, 0, 3, 1)
-        self.addLayout(self.add_box, 0, 1, 2, 1)
-        self.addLayout(self.remove_box, 0, 2, 2, 1)
-        self.addLayout(self.num_box, 0, 3, 2, 1)
-        self.addWidget(self.reset, 2, 3, Qt.AlignRight)
-        self.addWidget(self.preview, 3, 3, Qt.AlignRight)
-        self.addWidget(self.rename, 4, 3, Qt.AlignRight)
+        self.addLayout(self.case_box,    2, 0, 2, 1)
+        self.addLayout(self.add_box,     0, 1, 2, 1)
+        self.addLayout(self.remove_box,  0, 2, 2, 1)
+        self.addLayout(self.num_box,     0, 3, 2, 1)
+        self.addWidget(self.reset,       2, 3, Qt.AlignRight)
+        self.addWidget(self.rename,      3, 3, Qt.AlignRight)
+        self.setColumnStretch(0, 1)
+        self.setColumnStretch(1, 1)
+        self.setColumnStretch(2, 0)
+        self.setColumnStretch(3, 0)
+
+    def selection(self):
+        selection_model = self.view.selectionModel()
+        selection_model.selectionChanged.connect(self.preview_changes)
 
     def change_dir(self, model):
         self.model = model
+        self.selection()
 
     def reset_all(self):
         for box in [self.name_box, self.replace_box, self.case_box,
@@ -272,28 +297,81 @@ class rename_options(QGridLayout):
 
     def preview_changes(self) -> list[str]:
         new_strings = []
+
+        # Values for auto-numbering
+        sep = self.num_sep.text()
+        pad = self.num_pad.value()
+        start = self.num_start.value()
+        incr = self.num_incr.value()
+        for row in range(self.model.rowCount()):
+            self.model.item(row, 1).setText(self.model.item(row, 0).text())
+
         for index in self.view.selectionModel().selectedRows():
-            row = index.row
+            row = index.row()
             new_text = self.model.item(row, 1).text()
+
             if self.name_box.changed:
                 new_text = self.name_entry.text()
-            if self.replace_box:
-                pass
-            if self.case_box:
-                pass
-            if self.add_box:
-                pass
-            if self.remove_box:
-                pass
-            if self.num_box:
-                pass
+
+            if self.replace_box.changed:
+                new_text = new_text.replace(self.replace_entry_search.text(), self.replace_entry_text.text())
+
+            if self.case_box.changed:
+                cases = [str.upper, str.lower, str.title, str.capitalize]
+                index = self.case_select.currentIndex() - 1
+                case = cases[index]
+                exceptions = self.case_except.text()
+                exception_locs = [m.start() for m in re.finditer(exceptions, new_text)]
+                exceptions_len = len(exceptions)
+                new_text = case(new_text)
+                for loc in exception_locs:
+                    new_text = new_text[:loc] + exceptions + new_text[loc + exceptions_len:]
+
+            if self.add_box.changed:
+                new_text = self.add_prefix.text() + new_text
+                if self.add_insert_pos.value():
+                    new_text = (new_text[:self.add_insert_pos.value()] +
+                                self.add_insert.text() +
+                                new_text[self.add_insert_pos.value():])
+                new_text += self.add_suffix.text()
+
+            if self.remove_box.changed:
+                if self.remove_first.value():
+                    new_text = new_text[self.remove_first.value():]
+                if self.remove_last.value():
+                    new_text = new_text[:-self.remove_last.value()]
+                if self.remove_from.value():
+                    new_text = (new_text[:self.remove_from.value()] +
+                                new_text[self.remove_to.value() + 1:])
+                for char in self.remove_chars.text():
+                    new_text = new_text.replace(char, '')
+                for word in self.remove_words.text().split():
+                    new_text = new_text.replace(word, '')
+                if self.remove_crop.text():
+                    pos = new_text.find(self.remove_crop.text())
+                    if self.remove_crop_pos.currentText() == 'Before':
+                        new_text = new_text[pos:]
+                    else:
+                        new_text = new_text[:pos + len(self.remove_crop.text())]
+
+            if self.num_box.changed:
+                if self.num_prefix.isChecked():
+                    new_text = f'{start:0>{pad}}{sep}{new_text}'
+                if self.num_suffix.isChecked():
+                    new_text = f'{new_text}{sep}{start:0>{pad}}'
+                if self.num_insert.isChecked() and self.num_pos.value() > 0:
+                    pos = self.num_pos.value()
+                    new_text = f'{new_text[:pos]}{sep}{start:0>{pad}}{sep}{new_text[pos:]}'
+                start += incr
+
+            self.model.item(row, 1).setText(new_text)
 
             new_strings.append(new_text)
 
         return new_strings
 
     def changed(self, box):
-        box.changed = True
+        box.setChanged()
         # Check if widgets are in default state
         for widget in box.all:
             if isinstance(widget, QLineEdit) and widget.text():
@@ -305,7 +383,11 @@ class rename_options(QGridLayout):
             elif isinstance(widget, QCheckBox) and widget.isChecked():
                 break
         else:
-            box.changed = False
+            box.setChanged(False)
+
+    def min_remove(self):
+        if self.remove_to.value() < self.remove_from.value():
+            self.remove_to.setValue(self.remove_from.value())
 
 
 class main_window(QMainWindow):
@@ -324,7 +406,7 @@ class main_window(QMainWindow):
         self.tree = QTreeView()
         self.tree.setModel(self.tree_model)
         self.files = directory_table(self.files_model)
-        self.rename_opts = rename_options(self.files_model, self.files)
+        self.rename_opts = RenameOptions(self.files_model, self.files)
 
         # Set tree to only show the directories, no other information.
         self.tree.setIndentation(10)
