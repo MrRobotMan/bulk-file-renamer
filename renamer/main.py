@@ -323,7 +323,7 @@ class RenameOptions(QGridLayout):
             except FileExistsError:
                 error = QMessageBox()
                 error.setIcon(error.Icon.Critical)
-                error.setText(f'{new} already exists. File skipped')
+                error.setText(f'Could not rename {original}.\n{new} already exists.\nFile skipped')
                 error.setWindowTitle('Error')
                 error.exec_()
         self.change_signal.emit(True)
