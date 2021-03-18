@@ -1,36 +1,23 @@
-directory_table {
-    border: none;
-}
-
-rename_box {
-    border: 1px;
-    padding: 0px;
-}
-
-
-/* Examples:
-
-QListWidget {
-    color: #FFFFFF;
-    background-color: #33373B;
-}
-
-QListWidget::item {
-    height: 50px;
-}
-
-QListWidget::item:selected {
-    background-color: #2ABf9E;
-}
-
-
-QLabel {
-    background-color: #FFFFFF;
-    qproperty-alignment: AlignCenter;
+QTableView {
+    background-color: #ffffff;
+    selection-background-color: #7995b0;
 }
 
 QPushButton {
-    background-color: #2ABf9E;
-    padding: 20px;
-    font-size: 18px;
-} */
+    border-radius: 2px;
+    background-color: #dae2f0;
+}
+
+QHeaderView::section {
+    background-color: #f5f5f5;
+}
+
+QFrame[changed=true] {
+    color: #ff0000;
+    margin: 1px;
+}
+
+QFrame[changed=false] {
+    color: #000000;
+    margin: 1px;
+}
