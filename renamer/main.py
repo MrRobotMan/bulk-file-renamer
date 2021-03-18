@@ -9,7 +9,7 @@ from PySide6.QtCore import QDir, QModelIndex, Slot, Qt, Signal
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox,
                                QFileSystemModel, QFrame, QGridLayout, QHBoxLayout,
-                               QLabel, QLineEdit, QMainWindow, QPushButton, QSpinBox, QTableView,
+                               QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QSpinBox, QTableView,
                                QToolButton, QTreeView, QWidget)
 
 """
@@ -318,7 +318,14 @@ class RenameOptions(QGridLayout):
             ext = self.model.item(row, 2).text()
             original = self.path / f'{self.model.item(row, 0).text()}{ext}'
             new = self.path / f'{replacements[self.model.item(row, 0).text()]}{ext}'
-            original.rename(new)
+            try:
+                original.rename(new)
+            except FileExistsError:
+                error = QMessageBox()
+                error.setIcon(error.Icon.Critical)
+                error.setText(f'{new} already exists. File skipped')
+                error.setWindowTitle('Error')
+                error.exec_()
         self.change_signal.emit(True)
         self.reset_all()
 
