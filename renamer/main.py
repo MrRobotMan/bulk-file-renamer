@@ -1,3 +1,5 @@
+# cspell: ignore unpolish
+
 import os
 import re
 import sys
@@ -11,28 +13,6 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComb
                                QFileSystemModel, QFrame, QGridLayout, QHBoxLayout,
                                QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QSpinBox, QTableView,
                                QToolButton, QTreeView, QWidget)
-
-"""
-Planning:
-    GUI window with panes for
-    1. directory tree - Done
-    2. files in directory - Done
-    3. renaming options - Done
-    4. Path bar - Done
-    5. Rename logic / slots / etc
-
-files should show current name and new name - done
-select which files in a directory we want to rename - done
-sort by name, date modified - done
-
-rename options include:
-    replace x with y
-    wholly rename
-    change case (upper, lower, title, sentence)
-    remove from start, end, position to y, exact of chars / words, crop before or after
-    add prefix, insert at pos, suffix
-    auto-numbering prefix, suffix, prefix + suffix, insert at
-"""
 
 
 def files(path: str, parent=None) -> QStandardItemModel:
@@ -268,10 +248,10 @@ class RenameOptions(QGridLayout):
         self.num_sep = QLineEdit()
         self.num_sep.setFixedWidth(50)
         self.num_box = RenameBox('Auto Number',
-                                  [self.num_prefix, self.num_insert, self.num_start, self.num_pad],
-                                  ['Prefix', 'Insert', 'Start', 'Pad'],
-                                  [self.num_suffix, self.num_pos, self.num_incr, self.num_sep],
-                                  ['Suffix', 'At', 'Incr.', 'Sep.'])
+                                 [self.num_prefix, self.num_insert, self.num_start, self.num_pad],
+                                 ['Prefix', 'Insert', 'Start', 'Pad'],
+                                 [self.num_suffix, self.num_pos, self.num_incr, self.num_sep],
+                                 ['Suffix', 'At', 'Incr.', 'Sep.'])
         for widget in [self.num_prefix, self.num_suffix, self.num_insert]:
             widget.stateChanged.connect(lambda: self.changed(self.num_box))
         for widget in [self.num_pos, self.num_start, self.num_incr, self.num_pad]:
