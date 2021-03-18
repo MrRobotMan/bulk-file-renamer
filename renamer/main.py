@@ -498,6 +498,7 @@ class main_window(QMainWindow):
 
 
 def main():
+    app_path = Path(sys.argv[0]).absolute().parent
     try:
         path = Path(sys.argv[1])
     except IndexError:
@@ -506,7 +507,7 @@ def main():
     window = main_window(path)
     window.show()
 
-    with open('renamer/style.qss', 'r') as f:
+    with open(app_path / 'renamer' / 'style.qss', 'r') as f:
         _style = f.read()
         app.setStyleSheet(_style)
     sys.exit(app.exec_())
