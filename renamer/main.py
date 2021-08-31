@@ -414,7 +414,6 @@ class main_window(QMainWindow):
         self.tree_model.setRootPath(self.path)
         self.tree_model.setFilter(QDir.AllDirs | QDir.NoDotAndDotDot)
         self.files_model = files(self.path)
-
         self.dir_entry = QLineEdit(self.path)
         self.dir_btn = QToolButton()
         self.dir_btn.setArrowType(Qt.RightArrow)
